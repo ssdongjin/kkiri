@@ -1,0 +1,59 @@
+.solo-heading { padding: 38px 0 25px; }
+.solo-heading h1 { font-size: 35px; font-weight: 800; }
+.solo-heading em { font-style: normal; color: var(--coral-dark); }
+.solo-heading > p:last-child { margin-bottom: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.solo-page .button.primary { background: var(--coral-dark); }
+.solo-location { border: 1px solid var(--line); background: var(--paper); border-radius: 18px; padding: 18px; }
+.solo-location h2 { font-size: 19px; margin: 0 0 16px; font-weight: 800; }
+.solo-location-search { margin-top: 20px; }
+.solo-location-search label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 700; }
+.solo-location-search input { width: 100%; min-width: 0; min-height: 46px; background: #fffaf4; border: 1px solid var(--line); border-radius: 11px; padding: 10px; font-size: 14px; }
+.solo-location-search button { flex-shrink: 0; min-width: 64px; padding: 0 12px; border-radius: 11px; border: 1px solid #f0c3b3; background: var(--peach); color: var(--coral-dark); font-size: 13px; font-weight: 800; }
+.solo-location-search button:disabled { opacity: .5; cursor: not-allowed; }
+.solo-privacy { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.solo-error { color: #a73626; font-size: 13px; line-height: 1.65; margin: 13px 0 0; }
+.location-matches { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 5px; }
+.location-matches button { width: 100%; display: grid; gap: 4px; min-height: 54px; padding: 11px; text-align: left; border-radius: 10px; border: 1px solid var(--line); background: #fffaf4; }
+.location-matches button:hover { border-color: var(--coral); }
+.location-matches strong { font-size: 14px; font-weight: 800; }
+.location-matches span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.solo-filters { margin: 22px 0 25px; }
+.solo-location-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 22px; }
+.solo-location-summary strong { font-weight: 800; font-size: 16px; }
+.solo-location-summary .eyebrow { margin-bottom: 5px; }
+.solo-location-summary p:not(.eyebrow) { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 5px 0 0; }
+.solo-location-summary label { flex-shrink: 0; display: grid; gap: 5px; font-size: 12px; color: var(--muted); }
+.solo-location-summary select { border: 1px solid var(--line); background: var(--paper); color: var(--ink); min-height: 44px; border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+.solo-filters .chip { min-height: 44px; padding: 8px 12px; }
+.solo-filters .chip small { font-size: 11px; opacity: .8; }
+.solo-open-toggle { display: flex; align-items: center; gap: 9px; margin-top: 16px; min-height: 44px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.solo-open-toggle input { width: 20px; height: 20px; accent-color: var(--coral-dark); }
+.solo-results .section-title { margin-bottom: 16px; }
+.solo-random { width: 100%; margin: 14px 0 17px; }
+.solo-sort { margin: 20px 0 11px; font-size: 12px; color: var(--muted); }
+.solo-place-list { display: grid; gap: 12px; }
+.solo-place { padding: 17px; border-radius: 16px; border: 1px solid var(--line); background: var(--paper); }
+.solo-place h3 { margin: 0; font-size: 17px; line-height: 1.45; overflow-wrap: anywhere; font-weight: 800; letter-spacing: -.025em; }
+.solo-meta { margin: 5px 0 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
+.solo-address { margin: 13px 0 9px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+.opening-label { display: inline-flex; min-height: 27px; align-items: center; padding: 4px 7px; font-size: 11px; border-radius: 6px; margin-top: 10px; background: #f1ece5; color: #625548; }
+.opening-label.open { color: #215b42; background: #eaf4ec; }
+.opening-label.closed { color: #904935; background: #fff0e7; }
+.solo-map-link { display: flex; align-items: center; min-height: 44px; margin-top: 10px; color: var(--green); font-size: 13px; font-weight: 800; }
+.solo-pick { border: 2px solid var(--coral-dark); background: #fff8ef; }
+.solo-pick h3 { font-size: 23px; }
+.solo-pick .food-icon { width: 47px; height: 47px; font-size: 26px; }
+.solo-hours { color: var(--muted); font-size: 12px; margin-top: 9px; }
+.solo-hours summary { cursor: pointer; min-height: 32px; padding: 8px 0; }
+.solo-hours p { line-height: 1.6; margin: 4px 0 0; overflow-wrap: anywhere; }
+.solo-empty { border: 1px dashed #d8c7b7; border-radius: 16px; background: #fff8ee; padding: 25px 18px; text-align: center; margin: 15px 0; }
+.solo-empty h2, .solo-empty h3 { font-size: 17px; font-weight: 800; margin: 0 0 10px; }
+.solo-empty p { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.solo-empty .button { margin-top: 15px; }
+.solo-hint { color: var(--muted); font-size: 12px; margin: 10px 0; line-height: 1.65; }
+.solo-data-note { font-size: 12px; line-height: 1.7; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; margin: 25px 0 10px; }
+.solo-attribution { font-size: 10px; color: var(--muted); margin-top: 23px; line-height: 1.7; }
+.solo-attribution a { text-decoration: underline; text-underline-offset: 3px; }
+.solo-group-link { display: flex; align-items: center; min-height: 44px; color: var(--coral-dark); font-weight: 700; font-size: 13px; margin-top: 10px; }
+.solo-page button:focus-visible, .solo-page input:focus-visible, .solo-page select:focus-visible, .solo-page a:focus-visible { outline: 3px solid var(--coral-dark); outline-offset: 3px; }
+@media (max-width: 360px) { .solo-heading h1 { font-size: 30px; } .solo-location { padding: 14px; } .solo-home-link { font-size: 13px; } }
