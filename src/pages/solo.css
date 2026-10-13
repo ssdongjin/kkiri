@@ -12,6 +12,21 @@
 .solo-location-search button:disabled { opacity: .5; cursor: not-allowed; }
 .solo-privacy { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
 .solo-error { color: #a73626; font-size: 13px; line-height: 1.65; margin: 13px 0 0; }
+.device-permission-hint { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 10px 0 0; }
+.device-location-progress { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+.device-location-progress p { margin: 0; flex: 1; font-size: 12px; line-height: 1.65; color: var(--muted); }
+.device-location-progress button { min-height: 44px; flex-shrink: 0; padding: 6px; font-size: 12px; font-weight: 700; text-decoration: underline; color: var(--coral-dark); }
+.device-location-error { margin-top: 13px; padding: 13px; background: #fff4ed; border: 1px solid #efcbbb; border-radius: 12px; }
+.device-location-error > p { color: #933d2c; font-size: 13px; line-height: 1.65; margin: 0; }
+.device-location-error .button { margin-top: 13px; width: 100%; font-size: 13px; }
+.device-permission-guide { margin-top: 12px; font-size: 12px; line-height: 1.75; color: #625548; }
+.device-permission-guide strong { font-weight: 800; }
+.device-permission-guide ol { padding-left: 17px; list-style: decimal; margin: 6px 0 0; }
+.device-location-success { margin-top: 13px; padding: 14px; border: 1px solid #c8ddd0; border-radius: 12px; background: #f0f7f1; }
+.device-location-success > strong { color: #215b42; font-size: 13px; font-weight: 800; }
+.device-location-success p { margin: 7px 0 0; color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.6; }
+.device-location-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; color: var(--muted); font-size: 11px; margin-top: 8px; }
+.device-location-success a { display: inline-flex; align-items: center; min-height: 44px; color: var(--green); font-size: 12px; font-weight: 800; }
 .location-matches { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 5px; }
 .location-matches button { width: 100%; display: grid; gap: 4px; min-height: 54px; padding: 11px; text-align: left; border-radius: 10px; border: 1px solid var(--line); background: #fffaf4; }
 .location-matches button:hover { border-color: var(--coral); }

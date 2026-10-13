@@ -1,4 +1,5 @@
 import OpeningHours from "opening_hours";
+import { LocationRequestOptions, requestDeviceLocation } from "./geolocation";
 
 export interface SearchLocation {
   id: string;
@@ -108,21 +109,24 @@ export async function searchLocations(query: string, signal: AbortSignal): Promi
   return locations;
 }
 
-export function getCurrentLocation(): Promise<SearchLocation> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error("이 브라우저는 위치 찾기를 지원하지 않아요. 동네 이름으로 검색해 주세요.")); return; }
-    navigator.geolocation.getCurrentPosition((position) => resolve({
-      id: "current-position", label: "내 현재 위치", address: "", latitude: position.coords.latitude,
-      longitude: position.coords.longitude, accuracy: position.coords.accuracy,
-    }), (error) => {
-      const messages: Record<number, string> = {
-        1: "위치 권한이 꺼져 있어요. 브라우저에서 허용하거나 동네 이름으로 검색해 주세요.",
-        2: "현재 위치를 찾지 못했어요. 동네 이름으로 검색해 주세요.",
-        3: "위치 찾기에 시간이 오래 걸려요. 다시 시도하거나 동네 이름으로 검색해 주세요.",
-      };
-      reject(new Error(messages[error.code] || "위치를 확인하지 못했어요."));
-    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
-  });
+export async function getCurrentLocation(options?: LocationRequestOptions): Promise<SearchLocation> {
+  const position = await requestDeviceLocation(options);
+  return { id: "current-position", label: "내 현재 위치", address: "", ...position };
+}
+
+export async function getLocationAddress(location: SearchLocation, signal: AbortSignal): Promise<string> {
+  const url = new URL("reverse", `${photonUrl.replace(/\/$/, "")}/`);
+  url.search = new URLSearchParams({ lat: String(location.latitude), lon: String(location.longitude), radius: "0.2", limit: "1" }).toString();
+  const response = await requestJson<{ features: PhotonFeature[] }>(url.toString(), signal, 7000);
+  const properties = response.features[0]?.properties;
+  if (!properties) return "";
+  // Show the nearby neighbourhood, not an inferred exact home or restaurant address.
+  return [...new Set([properties.city || properties.state, properties.district, properties.street].filter(Boolean))].join(" ");
+}
+
+export function locationMapUrl(location: SearchLocation) {
+  const latitude = location.latitude.toFixed(5), longitude = location.longitude.toFixed(5);
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
 }
 
 export function classifyRestaurant(name: string, cuisine = ""): NearbyRestaurant["category"] {
