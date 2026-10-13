@@ -6,7 +6,7 @@ async function check() {
   const build = await esbuild.build({ entryPoints: ["src/lib/nearby-restaurants.ts"], bundle: true, platform: "node", format: "cjs", write: false, define: { "import.meta.env": "{}" } });
   const loaded = { exports: {} };
   new Function("require", "module", "exports", build.outputFiles[0].text)(require, loaded, loaded.exports);
-  const { classifyRestaurant, distanceInMetres, openingStatus, filterRestaurants, pickRandomRestaurant } = loaded.exports;
+  const { classifyRestaurant, distanceInMetres, openingStatus, filterRestaurants, pickRandomRestaurant, enrichSelectedRestaurant } = loaded.exports;
 
   assert.equal(distanceInMetres({ latitude: 37.48, longitude: 126.95 }, { latitude: 37.48, longitude: 126.95 }), 0);
   const distance = distanceInMetres({ latitude: 37.48, longitude: 126.95 }, { latitude: 37.481, longitude: 126.95 });
@@ -40,6 +40,33 @@ async function check() {
     assert.notEqual(selected.id, previous, "Re-picking must avoid the previous restaurant when alternatives exist");
     previous = selected.id;
   }
-  console.log("Nearby recommendation checks passed: distances, categories, opening hours, midnight hours, exclusions, random re-pick.");
+
+  const originalFetch = global.fetch, originalWindow = global.window;
+  let detailRequests = 0;
+  global.window = { setTimeout, clearTimeout };
+  global.fetch = async (url) => {
+    detailRequests++;
+    assert.match(url, /^https:\/\/api\.openstreetmap\.org\/api\/0\.6\/(node|way)\/\d+\.json$/);
+    const closed = url.endsWith("/2.json");
+    return { ok: true, json: async () => ({ elements: [{ type: closed ? "way" : "node", id: closed ? 2 : 1,
+      tags: closed ? { "disused:amenity": "restaurant" } : { amenity: "restaurant", cuisine: "sushi", "website:menu": "https://example.com/menu", brand: "Test brand" } }] }) };
+  };
+  try {
+    const basePlace = { id: "node/1", name: "식당", category: "기타", categoryInferred: true, latitude: 37.48, longitude: 126.95, countryCode: "kr", openingStatus: "unknown" };
+    const enriched = await enrichSelectedRestaurant(basePlace, new AbortController().signal);
+    assert.equal(enriched.category, "일식");
+    assert.equal(enriched.categoryInferred, false);
+    assert.equal(enriched.cuisine, "sushi");
+    assert.equal(enriched.menuUrl, "https://example.com/menu");
+    assert.equal(enriched.brand, "Test brand");
+    await enrichSelectedRestaurant(basePlace, new AbortController().signal);
+    assert.equal(detailRequests, 1, "Repeated picks reuse the exact record cache");
+    assert.equal(await enrichSelectedRestaurant({ ...basePlace, id: "way/2" }, new AbortController().signal), null, "Closed venues must be excluded");
+    assert.equal(await enrichSelectedRestaurant({ ...basePlace, id: "invalid/3" }, new AbortController().signal) !== null, true);
+    assert.equal(detailRequests, 2, "Invalid IDs must not be used in API URLs");
+    global.fetch = async () => ({ ok: false, status: 503 });
+    await assert.rejects(enrichSelectedRestaurant({ ...basePlace, id: "node/3" }, new AbortController().signal), /503/);
+  } finally { global.fetch = originalFetch; global.window = originalWindow; }
+  console.log("Nearby recommendation checks passed: distances, categories, opening hours, exclusions, random re-pick, selected menu metadata, detail cache, failed lookup.");
 }
 check().catch((error) => { console.error(error); process.exitCode = 1; });

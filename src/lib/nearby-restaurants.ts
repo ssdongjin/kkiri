@@ -27,6 +27,10 @@ export interface NearbyRestaurant {
   openingStatus: OpeningStatus;
   countryCode: string;
   phone?: string;
+  cuisine?: string;
+  brand?: string;
+  menuUrl?: string;
+  website?: string;
 }
 
 interface PhotonFeature {
@@ -48,6 +52,7 @@ const overpassUrl = import.meta.env.VITE_OVERPASS_URL || "https://overpass.priva
 const locationCache = new Map<string, SearchLocation[]>();
 const restaurantCache = new Map<string, { at: number; places: NearbyRestaurant[] }>();
 const hoursCache = new Map<string, Record<string, string>>();
+const detailCache = new Map<string, { at: number; tags: Record<string, string> }>();
 
 // Search results are held in memory only. Coordinates are never stored in Supabase or browser storage.
 async function requestJson<T>(url: string, signal: AbortSignal, timeout = 12000): Promise<T> {
@@ -174,6 +179,7 @@ export async function searchNearbyRestaurants(location: SearchLocation, radius: 
     places.push({ id, name: p.name, category: classifyRestaurant(p.name, tags.cuisine), categoryInferred: !tags.cuisine,
       address: placeAddress(feature), latitude, longitude, distanceMetres,
       openingHours: tags.opening_hours, openingStatus: openingStatus(tags.opening_hours, latitude, longitude, p.countrycode), countryCode: p.countrycode?.toLowerCase() || "kr", phone: tags.phone || tags["contact:phone"],
+      cuisine: tags.cuisine, brand: tags.brand, menuUrl: tags["website:menu"] || tags.menu, website: tags.website || tags["contact:website"],
     });
   }
   places.sort((a, b) => a.distanceMetres - b.distanceMetres);
@@ -197,12 +203,36 @@ export async function enrichRestaurantHours(places: NearbyRestaurant[], signal: 
     hoursCache.set(cacheKey, tagsById);
   }
   return places.flatMap((place) => {
-    const tags: Record<string, string> = JSON.parse(tagsById[place.id] || "{}");
-    if (["disused", "abandoned", "demolished", "closed"].some((key) => tags[key] === "yes") || tags["disused:amenity"] || tags["abandoned:amenity"]) return [];
-    const openingHours = tags.opening_hours || place.openingHours;
-    return [{ ...place, category: classifyRestaurant(place.name, tags.cuisine), categoryInferred: !tags.cuisine,
-      openingHours, openingStatus: openingStatus(openingHours, place.latitude, place.longitude, place.countryCode), phone: tags.phone || tags["contact:phone"] || place.phone }];
+    const detailed = detailCache.get(place.id);
+    // A later batch response must not erase details already fetched for the selected place.
+    const tags: Record<string, string> = { ...JSON.parse(tagsById[place.id] || "{}"), ...(detailed && Date.now() - detailed.at < 5 * 60000 ? detailed.tags : {}) };
+    if (tagsById[place.id]) detailCache.set(place.id, { at: Date.now(), tags });
+    const enriched = applyRestaurantTags(place, tags);
+    return enriched ? [enriched] : [];
   });
+}
+
+function applyRestaurantTags(place: NearbyRestaurant, tags: Record<string, string>): NearbyRestaurant | null {
+  if (["disused", "abandoned", "demolished", "closed"].some((key) => tags[key] === "yes") || tags["disused:amenity"] || tags["abandoned:amenity"] || (tags.amenity && !["restaurant", "fast_food", "food_court"].includes(tags.amenity))) return null;
+  const openingHours = tags.opening_hours || place.openingHours;
+  const cuisine = tags.cuisine || place.cuisine;
+  return { ...place, category: classifyRestaurant(place.name, cuisine), categoryInferred: !cuisine,
+    cuisine, brand: tags.brand || place.brand, menuUrl: tags["website:menu"] || tags.menu || place.menuUrl, website: tags.website || tags["contact:website"] || place.website,
+    openingHours, openingStatus: openingStatus(openingHours, place.latitude, place.longitude, place.countryCode), phone: tags.phone || tags["contact:phone"] || place.phone };
+}
+
+// One exact public record per manual pick, cached in memory. No bulk downloads or location sent.
+// This lookup does not block the card if optional Overpass enrichment is slow/unavailable.
+export async function enrichSelectedRestaurant(place: NearbyRestaurant, signal: AbortSignal): Promise<NearbyRestaurant | null> {
+  if (!/^(node|way|relation)\/\d+$/.test(place.id)) return place;
+  const cached = detailCache.get(place.id);
+  if (cached && Date.now() - cached.at < 5 * 60000) return applyRestaurantTags(place, cached.tags);
+  const response = await requestJson<{ elements: OverpassElement[] }>(`https://api.openstreetmap.org/api/0.6/${place.id}.json`, signal, 7000);
+  const record = response.elements.find((item) => `${item.type}/${item.id}` === place.id);
+  if (!record) throw new Error("등록된 식당 정보를 찾지 못했어요.");
+  const tags = record.tags || {};
+  detailCache.set(place.id, { at: Date.now(), tags });
+  return applyRestaurantTags(place, tags);
 }
 
 export function filterRestaurants(places: NearbyRestaurant[], category: SoloCategory, onlyOpen: boolean) {

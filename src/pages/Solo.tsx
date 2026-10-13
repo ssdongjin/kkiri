@@ -2,16 +2,44 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import "./solo.css";
 import {
-  enrichRestaurantHours, filterRestaurants, formatDistance, getCurrentLocation, getLocationAddress, locationMapUrl,
+  enrichRestaurantHours, enrichSelectedRestaurant, filterRestaurants, formatDistance, getCurrentLocation, getLocationAddress, locationMapUrl,
   NearbyRestaurant, pickRandomRestaurant, restaurantMapUrl, SearchLocation,
   searchLocations, searchNearbyRestaurants, soloCategories, SoloCategory,
 } from "../lib/nearby-restaurants";
 import { LocationRequestError, readLocationPermission } from "../lib/geolocation";
+import { getRestaurantMenu, safeMenuUrl } from "../lib/restaurant-menu";
 
 const icons: Record<string, string> = { 한식: "🍚", 양식: "🍝", 중식: "🥟", 일식: "🍱", 분식: "🍜", 피자: "🍕", 마라탕: "🌶️", 버거: "🍔", 기타: "🍽️" };
 const statusLabels = { open: "영업시간상 영업 중", closed: "영업시간상 휴무", unknown: "영업 정보 확인 필요" };
 
-function RestaurantCard({ place, featured = false }: { place: NearbyRestaurant; featured?: boolean }) {
+function RestaurantMenuInfo({ place, loading }: { place: NearbyRestaurant; loading: boolean }) {
+  const menu = getRestaurantMenu(place);
+  const official = menu.evidence === "official-brand";
+  const example = menu.evidence === "category-example";
+  const unknown = menu.evidence === "unknown";
+  const menuUrl = safeMenuUrl(place.menuUrl), website = safeMenuUrl(place.website);
+  const labels = { "official-brand": "공식 브랜드 메뉴", "registered-cuisine": "등록 음식 종류 기준", "name-inferred": "식당명 기준 예상", "category-example": "음식 종류별 예시", unknown: "메뉴 정보 미등록" };
+  return <section className="solo-menu" aria-label={`${place.name} 메뉴 안내`}>
+    <div className="solo-menu-heading"><h4>뭐 파는 곳이에요?</h4><span className={`solo-menu-badge ${official ? "verified" : ""}`}>{labels[menu.evidence]}</span></div>
+    <p className="solo-menu-summary">{menu.summary}</p>
+    {loading && <p className="solo-hint" role="status">이 식당의 등록 음식 정보도 확인 중이에요…</p>}
+    <dl className="solo-menu-rows">
+      <div><dt>{official || unknown ? "메인" : example ? "메인 예시" : "예상 메인"}</dt><dd>{menu.mains.length ? menu.mains.join(" · ") : "메뉴 정보 확인 필요"}</dd></div>
+      <div><dt>{official || unknown ? "사이드·곁들임" : "사이드 조합 제안"}</dt><dd>{menu.sides.length ? menu.sides.join(" · ") : "메뉴 정보 확인 필요"}</dd></div>
+      <div><dt>대표·인기</dt><dd className={menu.signature ? "solo-signature" : "solo-menu-unknown"}>{menu.signature || "확인된 대표·인기 메뉴 정보가 없어요."}</dd></div>
+    </dl>
+    <p className="solo-menu-note">{official ? "브랜드 공통 메뉴예요. 지점별 판매 메뉴는 다를 수 있어요. 인기 순위를 의미하지 않아요." : unknown ? "확인되지 않은 메뉴를 만들어 넣지 않아요. 아래 네이버지도에서 실제 메뉴를 확인해 주세요." : "예상·예시와 조합 제안은 판매 여부가 확인되지 않았어요. 방문 전 실제 메뉴를 확인해 주세요."}</p>
+    {(menu.sources.length > 0 || menuUrl || website) && <div className="solo-menu-sources">
+      {menuUrl && <a href={menuUrl} target="_blank" rel="noopener noreferrer">등록된 메뉴 페이지 ↗</a>}
+      {menu.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{source.label} ↗</a>)}
+      {!menuUrl && website && <a href={website} target="_blank" rel="noopener noreferrer">등록된 식당 홈페이지 ↗</a>}
+    </div>}
+    {menu.checkedAt && <p className="solo-menu-date">공식 자료 확인: {menu.checkedAt} · 식당명 또는 등록 브랜드로 매칭</p>}
+  </section>;
+}
+
+function RestaurantCard({ place, featured = false, menuLoading = false }: { place: NearbyRestaurant; featured?: boolean; menuLoading?: boolean }) {
+  const food = getRestaurantMenu(place);
   return <article className={`solo-place ${featured ? "solo-pick" : ""}`}>
     {featured && <p className="eyebrow">오늘은 여기 어때요?</p>}
     <div className="flex items-start gap-3">
@@ -23,8 +51,9 @@ function RestaurantCard({ place, featured = false }: { place: NearbyRestaurant; 
     </div>
     {place.address && <p className="solo-address">{place.address}</p>}
     <span className={`opening-label ${place.openingStatus}`}>{statusLabels[place.openingStatus]}</span>
+    {featured ? <RestaurantMenuInfo place={place} loading={menuLoading} /> : food.mains.length > 0 && <p className="solo-menu-preview">{food.evidence === "official-brand" ? "브랜드 메인" : food.evidence === "category-example" ? "메뉴 예시" : "음식 종류 힌트"} · {food.mains.join(" / ")}</p>}
     {place.openingHours && <details className="solo-hours"><summary>등록된 영업시간 보기</summary><p>{place.openingHours}</p></details>}
-    <a className={featured ? "map-link mt-4" : "solo-map-link"} href={restaurantMapUrl(place)} target="_blank" rel="noopener noreferrer">네이버지도에서 확인 ↗</a>
+    <a className={featured ? "map-link mt-4" : "solo-map-link"} href={restaurantMapUrl(place)} target="_blank" rel="noopener noreferrer">{featured ? "네이버지도에서 실제 메뉴 확인 ↗" : "네이버지도에서 확인 ↗"}</a>
   </article>;
 }
 
@@ -48,6 +77,7 @@ export default function Solo() {
   const [category, setCategory] = useState<SoloCategory>("전체");
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [chosenId, setChosenId] = useState<string | undefined>();
+  const [menuLoading, setMenuLoading] = useState(false);
   const [searchCount, setSearchCount] = useState(0);
   const locationRequest = useRef<AbortController>();
   const deviceRequest = useRef<AbortController>();
@@ -83,6 +113,20 @@ export default function Solo() {
     })();
     return () => controller.abort();
   }, [location, radius, searchCount]);
+
+  useEffect(() => {
+    const selected = restaurants.find((place) => place.id === chosenId);
+    if (!selected) { setMenuLoading(false); return; }
+    const controller = new AbortController();
+    setMenuLoading(true);
+    void enrichSelectedRestaurant(selected, controller.signal).then((enriched) => {
+      if (controller.signal.aborted) return;
+      setRestaurants((current) => enriched ? current.map((place) => place.id === selected.id ? enriched : place) : current.filter((place) => place.id !== selected.id));
+    }).catch(() => { /* Keep explicitly labelled hints when the optional lookup fails. */ })
+      .finally(() => { if (!controller.signal.aborted) setMenuLoading(false); });
+    return () => controller.abort();
+    // A manual pick triggers this lookup; restaurant updates must not trigger it again.
+  }, [chosenId, location, radius]);
 
   const findLocation = async (event: FormEvent) => {
     event.preventDefault();
@@ -165,10 +209,10 @@ export default function Solo() {
       <section className="solo-results" aria-busy={loading}>
         {loading ? <div className="solo-empty" role="status"><h2>주변 식당을 찾고 있어요</h2><p>{location.label} 반경 {formatDistance(radius)}의 등록 식당을 검색 중이에요.</p></div> : searchError ? <div className="solo-empty" role="alert"><p>{searchError}</p><button className="button secondary" type="button" onClick={() => setSearchCount((count) => count + 1)}>다시 검색</button></div> : <>
           <div className="section-title"><div><p className="eyebrow">내 주변 혼밥</p><h2>{category === "전체" ? "가까운 식당 추천" : `${category} 식당 추천`}</h2></div><span>{eligible.length}곳</span></div>
-          {hoursLoading && <p className="solo-hint" role="status">등록된 영업시간도 확인하고 있어요.</p>}
+          {hoursLoading && <p className="solo-hint" role="status">등록된 음식 종류와 영업시간도 확인하고 있어요.</p>}
           {eligible.length > 0 ? <>
             <button type="button" className="button primary solo-random" onClick={() => setChosenId(pickRandomRestaurant(eligible, chosenId)?.id)}>{chosen ? "다른 식당 다시 뽑기" : "주변 식당 랜덤으로 뽑기"}<span aria-hidden="true">↻</span></button>
-            <div aria-live="polite" aria-atomic="true">{chosen && <RestaurantCard place={chosen} featured />}</div>
+            <div aria-live="polite" aria-atomic="true">{chosen && <RestaurantCard place={chosen} featured menuLoading={menuLoading} />}</div>
             <p className="solo-sort">가까운 순 · 최대 50개 등록 식당에서 추천</p>
             <div className="solo-place-list">{eligible.slice(0, 12).map((place) => <RestaurantCard key={place.id} place={place} />)}</div>
             {eligible.length > 12 && <p className="solo-hint">가까운 12곳을 보여드려요. 랜덤 뽑기는 조건에 맞는 {eligible.length}곳 전체에서 골라요.</p>}
